@@ -14,6 +14,8 @@ use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
+use regex::Regex;
+
 #[derive(Parser, Debug)]
 #[command(name = "get-system-include-dirs")]
 #[command(about = "Extract system include directories from C++ compiler", long_about = None)]
@@ -148,6 +150,7 @@ fn get_compiler_include_dirs(compiler: &PathBuf) -> Result<Vec<String>, String> 
 fn parse_include_dirs(compiler_output: &str) -> Result<Vec<String>, String> {
     let mut dirs = Vec::new();
     let mut in_include_section = false;
+    let annotation_pattern = Regex::new(r"\s*\(.*\)$").unwrap();
 
     for line in compiler_output.lines() {
         let trimmed = line.trim();
@@ -165,13 +168,8 @@ fn parse_include_dirs(compiler_output: &str) -> Result<Vec<String>, String> {
 
         // Collect directory paths
         if in_include_section && !trimmed.is_empty() {
-            // Remove framework annotations like "(framework directory)" on macOS
-            let path = trimmed
-                .split('(')
-                .next()
-                .unwrap_or(trimmed)
-                .trim()
-                .to_string();
+            // Remove trailing annotations like "(framework directory)" on macOS
+            let path = annotation_pattern.replace(trimmed, "").trim().to_string();
 
             if !path.is_empty() {
                 dirs.push(path);
