@@ -90,7 +90,7 @@ fn get_windows_include_dirs() -> Result<Vec<String>, String> {
             let dirs: Vec<String> = include_var
                 .split(';')
                 .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
+                .map(|s| s.replace('\\', "/"))
                 .collect();
             Ok(dirs)
         }
@@ -169,10 +169,13 @@ fn parse_include_dirs(compiler_output: &str) -> Result<Vec<String>, String> {
         // Collect directory paths
         if in_include_section && !trimmed.is_empty() {
             // Remove trailing annotations like "(framework directory)" on macOS
-            let path = annotation_pattern.replace(trimmed, "").trim().to_string();
+            let cleaned = annotation_pattern.replace(trimmed, "");
+            let path = cleaned.trim();
 
             if !path.is_empty() {
-                dirs.push(path);
+                // Normalize path separators to forward slashes
+                let normalized = path.replace('\\', "/");
+                dirs.push(normalized);
             }
         }
     }
