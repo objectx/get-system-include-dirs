@@ -11,11 +11,10 @@
 //! the output to extract include directory paths.
 
 use clap::Parser;
+use regex::Regex;
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-
-use regex::Regex;
 
 #[derive(Parser, Debug)]
 #[command(name = "get-system-include-dirs")]
@@ -73,7 +72,33 @@ fn get_include_dirs(compiler: Option<PathBuf>) -> Result<Vec<String>, String> {
         }
     });
 
+    // On Windows, check if the compiler is MSVC-like
+    if cfg!(windows) && is_msvc_like_compiler(&compiler_path) {
+        return get_windows_include_dirs();
+    }
+
     get_compiler_include_dirs(&compiler_path)
+}
+
+/// Checks if a compiler is MSVC-like based on its filename.
+///
+/// MSVC-like compilers include: cl, cl.exe, clang-cl, clang-cl.exe
+///
+/// # Arguments
+///
+/// * `compiler` - Path to the compiler executable
+///
+/// # Returns
+///
+/// `true` if the compiler filename matches the pattern `cl(?:\.exe)$`
+fn is_msvc_like_compiler(compiler: &PathBuf) -> bool {
+    if let Some(filename) = compiler.file_name() {
+        if let Some(name) = filename.to_str() {
+            let msvc_pattern = Regex::new(r"cl(?:\.exe)?$").unwrap();
+            return msvc_pattern.is_match(name);
+        }
+    }
+    false
 }
 
 /// Extracts include directories from the Windows `INCLUDE` environment variable.
