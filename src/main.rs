@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: WTFPL
 //! A cross-platform utility to extract system include directories from C++ compilers.
 //!
 //! This tool queries a C++ compiler to discover its default system include directories.
