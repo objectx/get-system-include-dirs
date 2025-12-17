@@ -13,6 +13,8 @@
 use clap::Parser;
 use regex::Regex;
 use std::env;
+use std::fs::File;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -23,6 +25,10 @@ struct Args {
     /// Path to the C++ compiler to query
     #[arg(short, long)]
     compiler: Option<PathBuf>,
+
+    /// Output file path (use '-' for stdout)
+    #[arg(short, long)]
+    output: Option<String>,
 }
 
 fn main() {
@@ -30,8 +36,9 @@ fn main() {
 
     match get_include_dirs(args.compiler) {
         Ok(dirs) => {
-            for dir in dirs {
-                println!("{}", dir);
+            if let Err(e) = write_output(&dirs, args.output) {
+                eprintln!("Error writing output: {}", e);
+                std::process::exit(1);
             }
         }
         Err(e) => {
@@ -39,6 +46,35 @@ fn main() {
             std::process::exit(1);
         }
     }
+}
+
+/// Writes include directories to the specified output destination.
+///
+/// # Arguments
+///
+/// * `dirs` - Vector of include directory paths to write
+/// * `output` - Optional output destination: `None` or `Some("-")` for stdout, `Some(path)` for file
+///
+/// # Returns
+///
+/// * `Ok(())` - Successfully wrote output
+/// * `Err(io::Error)` - Failed to write output
+fn write_output(dirs: &[String], output: Option<String>) -> io::Result<()> {
+    let content = dirs.join("\n");
+
+    match output.as_deref() {
+        None | Some("-") => {
+            // Write to stdout
+            println!("{}", content);
+        }
+        Some(path) => {
+            // Write to file
+            let mut file = File::create(path)?;
+            writeln!(file, "{}", content)?;
+        }
+    }
+
+    Ok(())
 }
 
 /// Gets system include directories using the specified compiler or platform defaults.
