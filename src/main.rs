@@ -12,11 +12,13 @@
 
 use clap::Parser;
 use regex::Regex;
-use std::env;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+
+#[cfg(windows)]
+mod windows_vs;
 
 #[derive(Parser, Debug)]
 #[command(name = "get-system-include-dirs")]
@@ -29,12 +31,18 @@ struct Args {
     /// Output file path (use '-' for stdout)
     #[arg(short, long)]
     output: Option<String>,
+
+    /// Visual Studio version (e.g., "2022", "2026", "17", "18")
+    /// Only used on Windows when no compiler is specified
+    #[cfg(windows)]
+    #[arg(long)]
+    vs_version: Option<String>,
 }
 
 fn main() {
     let args = Args::parse();
 
-    match get_include_dirs(args.compiler) {
+    match get_include_dirs(args.compiler, #[cfg(windows)] args.vs_version) {
         Ok(dirs) => {
             if let Err(e) = write_output(&dirs, args.output) {
                 eprintln!("Error writing output: {}", e);
@@ -93,10 +101,14 @@ fn write_output(dirs: &[String], output: Option<String>) -> io::Result<()> {
 /// - **Windows (no compiler specified)**: Parses the `INCLUDE` environment variable
 /// - **Unix-like (no compiler specified)**: Uses `/usr/bin/c++`
 /// - **Compiler specified**: Invokes the compiler with `-v` to extract include directories
-fn get_include_dirs(compiler: Option<PathBuf>) -> Result<Vec<String>, String> {
-    if cfg!(windows) && compiler.is_none() {
-        // On Windows without a specified compiler, parse $INCLUDE
-        return get_windows_include_dirs();
+fn get_include_dirs(
+    compiler: Option<PathBuf>,
+    #[cfg(windows)] vs_version: Option<String>,
+) -> Result<Vec<String>, String> {
+    #[cfg(windows)]
+    if compiler.is_none() {
+        // On Windows without a specified compiler, use $INCLUDE or auto-detect VS
+        return windows_vs::get_windows_include_dirs_with_fallback(vs_version.as_deref());
     }
 
     // Unix-like platforms or when compiler is specified
@@ -107,11 +119,6 @@ fn get_include_dirs(compiler: Option<PathBuf>) -> Result<Vec<String>, String> {
             PathBuf::from("c++")
         }
     });
-
-    // On Windows, check if the compiler is MSVC-like
-    if cfg!(windows) && is_msvc_like_compiler(&compiler_path) {
-        return get_windows_include_dirs();
-    }
 
     get_compiler_include_dirs(&compiler_path)
 }
@@ -127,39 +134,6 @@ fn get_include_dirs(compiler: Option<PathBuf>) -> Result<Vec<String>, String> {
 /// # Returns
 ///
 /// `true` if the compiler filename matches the pattern `cl(?:\.exe)$`
-fn is_msvc_like_compiler(compiler: &PathBuf) -> bool {
-    if let Some(filename) = compiler.file_name() {
-        if let Some(name) = filename.to_str() {
-            let msvc_pattern = Regex::new(r"cl(?:\.exe)?$").unwrap();
-            return msvc_pattern.is_match(name);
-        }
-    }
-    false
-}
-
-/// Extracts include directories from the Windows `INCLUDE` environment variable.
-///
-/// Parses semicolon-separated paths from the `INCLUDE` environment variable,
-/// filtering out empty entries.
-///
-/// # Returns
-///
-/// * `Ok(Vec<String>)` - A vector of include directory paths
-/// * `Err(String)` - An error if the `INCLUDE` environment variable is not set
-fn get_windows_include_dirs() -> Result<Vec<String>, String> {
-    match env::var("INCLUDE") {
-        Ok(include_var) => {
-            let dirs: Vec<String> = include_var
-                .split(';')
-                .filter(|s| !s.is_empty())
-                .map(|s| s.replace('\\', "/"))
-                .collect();
-            Ok(dirs)
-        }
-        Err(_) => Err("INCLUDE environment variable not set".to_string()),
-    }
-}
-
 /// Extracts include directories by invoking a gcc-like compiler with verbose flags.
 ///
 /// Runs the compiler with `-v -E -x c++ -` arguments to generate verbose output
