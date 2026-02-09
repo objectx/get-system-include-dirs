@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where:*)",
+      "Bash(powershell:*)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -all -format json)",
+      "Bash(cmd /c \"\"\"C:\\\\tools\\\\MSVS\\\\17\\\\Professional\\\\Common7\\\\Tools\\\\vsdevcmd.bat\"\" >nul && echo %INCLUDE%\")",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -?)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -version \"[17.0,18.0\\)\" -property installationPath)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -version \"[18.0,19.0\\)\" -property installationPath)",
+      "Bash(openspec new:*)",
+      "Bash(cargo build:*)",
+      "Bash(./target/release/get-system-include-dirs.exe:*)",
+      "Bash(cmd /c \"\"\"C:\\\\tools\\\\MSVS\\\\18\\\\Professional\\\\Common7\\\\Tools\\\\vsdevcmd.bat\"\" -arch=x64 && set INCLUDE\")",
+      "Bash(echo:*)"
+    ]
+  }
+}
