@@ -112,9 +112,8 @@ fn find_vs_and_get_include(vs_version: Option<&str>) -> Result<Vec<String>, Stri
 /// * `Ok(PathBuf)` - Path to vswhere.exe
 /// * `Err(String)` - Error if vswhere.exe not found
 fn find_vswhere() -> Result<PathBuf, String> {
-    let vswhere_path = PathBuf::from(
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe",
-    );
+    let vswhere_path =
+        PathBuf::from("C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe");
 
     if vswhere_path.exists() {
         Ok(vswhere_path)

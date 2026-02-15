@@ -42,7 +42,11 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    match get_include_dirs(args.compiler, #[cfg(windows)] args.vs_version) {
+    match get_include_dirs(
+        args.compiler,
+        #[cfg(windows)]
+        args.vs_version,
+    ) {
         Ok(dirs) => {
             if let Err(e) = write_output(&dirs, args.output) {
                 eprintln!("Error writing output: {}", e);
