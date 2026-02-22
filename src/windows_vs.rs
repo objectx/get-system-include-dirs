@@ -34,9 +34,7 @@ struct VsInstance {
 /// # Returns
 /// * `Ok(Vec<String>)` - Include directory paths (forward slashes)
 /// * `Err(String)` - Detailed error message
-pub fn get_windows_include_dirs_with_fallback(
-    vs_version: Option<&str>,
-) -> Result<Vec<String>, String> {
+pub fn get_windows_include_dirs_with_fallback(vs_version: Option<&str>) -> Result<Vec<String>, String> {
     // Priority 1: Check if $INCLUDE already set
     if let Ok(include_var) = env::var("INCLUDE") {
         return parse_include_env(&include_var);
@@ -112,8 +110,7 @@ fn find_vs_and_get_include(vs_version: Option<&str>) -> Result<Vec<String>, Stri
 /// * `Ok(PathBuf)` - Path to vswhere.exe
 /// * `Err(String)` - Error if vswhere.exe not found
 fn find_vswhere() -> Result<PathBuf, String> {
-    let vswhere_path =
-        PathBuf::from("C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe");
+    let vswhere_path = PathBuf::from("C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe");
 
     if vswhere_path.exists() {
         Ok(vswhere_path)
@@ -152,15 +149,12 @@ fn query_vswhere(vswhere_path: &PathBuf, vs_version: Option<&str>) -> Result<Str
         .map_err(|e| format!("Failed to execute vswhere.exe: {}", e))?;
 
     if !output.status.success() {
-        return Err(format!(
-            "vswhere.exe failed with exit code: {}",
-            output.status
-        ));
+        return Err(format!("vswhere.exe failed with exit code: {}", output.status));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let instances: Vec<VsInstance> = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Failed to parse vswhere JSON output: {}", e))?;
+    let instances: Vec<VsInstance> =
+        serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse vswhere JSON output: {}", e))?;
 
     instances
         .first()
@@ -236,6 +230,8 @@ fn run_vsdevcmd_and_capture_include(vsdevcmd_path: &str) -> Result<String, Strin
     // If we couldn't find INCLUDE, include both stdout and stderr in error
     Err(format!(
         "Could not find INCLUDE variable in vsdevcmd.bat output.\nExit code: {}\nStderr: {}\nStdout: {}",
-        output.status, stderr.trim(), stdout.trim()
+        output.status,
+        stderr.trim(),
+        stdout.trim()
     ))
 }

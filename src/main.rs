@@ -14,7 +14,7 @@ use clap::Parser;
 use regex::Regex;
 use std::fs::File;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 #[cfg(windows)]
@@ -123,12 +123,12 @@ fn get_include_dirs(
         eprintln!("warning: compiler args ignored — no --compiler specified");
     }
     #[cfg(windows)]
-    if !compiler_args.is_empty() && compiler.as_ref().map_or(false, is_msvc_like_compiler) {
+    if !compiler_args.is_empty() && compiler.as_deref().is_some_and(is_msvc_like_compiler) {
         eprintln!("warning: compiler args ignored for MSVC-like compilers");
     }
 
     #[cfg(windows)]
-    if compiler.as_ref().map_or(true, is_msvc_like_compiler) {
+    if compiler.as_deref().is_none_or(is_msvc_like_compiler) {
         // On Windows with no compiler, or with an MSVC-like compiler, use $INCLUDE or auto-detect VS
         return windows_vs::get_windows_include_dirs_with_fallback(vs_version.as_deref());
     }
@@ -155,7 +155,7 @@ fn get_include_dirs(
 ///
 /// * `compiler` - Path to the compiler executable
 #[cfg(windows)]
-fn is_msvc_like_compiler(compiler: &PathBuf) -> bool {
+fn is_msvc_like_compiler(compiler: &Path) -> bool {
     compiler
         .file_name()
         .and_then(|n| n.to_str())
