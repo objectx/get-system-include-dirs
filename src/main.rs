@@ -102,16 +102,17 @@ fn write_output(dirs: &[String], output: Option<String>) -> io::Result<()> {
 ///
 /// # Platform behavior
 ///
-/// - **Windows (no compiler specified)**: Parses the `INCLUDE` environment variable
+/// - **Windows (no compiler, or MSVC-like compiler)**: Uses `$INCLUDE` env var or auto-detects
+///   Visual Studio via `vswhere.exe` and `vsdevcmd.bat`
 /// - **Unix-like (no compiler specified)**: Uses `/usr/bin/c++`
-/// - **Compiler specified**: Invokes the compiler with `-v` to extract include directories
+/// - **Compiler specified (non-MSVC-like)**: Invokes the compiler with `-v` to extract include directories
 fn get_include_dirs(
     compiler: Option<PathBuf>,
     #[cfg(windows)] vs_version: Option<String>,
 ) -> Result<Vec<String>, String> {
     #[cfg(windows)]
-    if compiler.is_none() {
-        // On Windows without a specified compiler, use $INCLUDE or auto-detect VS
+    if compiler.as_ref().map_or(true, is_msvc_like_compiler) {
+        // On Windows with no compiler, or with an MSVC-like compiler, use $INCLUDE or auto-detect VS
         return windows_vs::get_windows_include_dirs_with_fallback(vs_version.as_deref());
     }
 
@@ -127,17 +128,25 @@ fn get_include_dirs(
     get_compiler_include_dirs(&compiler_path)
 }
 
-/// Checks if a compiler is MSVC-like based on its filename.
+/// Returns `true` if the compiler filename matches a known MSVC-like compiler.
 ///
-/// MSVC-like compilers include: cl, cl.exe, clang-cl, clang-cl.exe
+/// Matches (case-insensitive): `cl`, `cl.exe`, `clang-cl`, `clang-cl.exe`
 ///
 /// # Arguments
 ///
 /// * `compiler` - Path to the compiler executable
-///
-/// # Returns
-///
-/// `true` if the compiler filename matches the pattern `cl(?:\.exe)$`
+#[cfg(windows)]
+fn is_msvc_like_compiler(compiler: &PathBuf) -> bool {
+    compiler
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|name| {
+            let lower = name.to_ascii_lowercase();
+            matches!(lower.as_str(), "cl" | "cl.exe" | "clang-cl" | "clang-cl.exe")
+        })
+        .unwrap_or(false)
+}
+
 /// Extracts include directories by invoking a gcc-like compiler with verbose flags.
 ///
 /// Runs the compiler with `-v -E -x c++ -` arguments to generate verbose output
