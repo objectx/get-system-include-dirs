@@ -37,6 +37,10 @@ struct Args {
     #[cfg(windows)]
     #[arg(long)]
     vs_version: Option<String>,
+
+    /// Extra arguments forwarded verbatim to the compiler (gcc-like only, requires --compiler)
+    #[arg(last = true)]
+    compiler_args: Vec<String>,
 }
 
 fn main() {
@@ -44,6 +48,7 @@ fn main() {
 
     match get_include_dirs(
         args.compiler,
+        args.compiler_args,
         #[cfg(windows)]
         args.vs_version,
     ) {
@@ -94,6 +99,8 @@ fn write_output(dirs: &[String], output: Option<String>) -> io::Result<()> {
 /// # Arguments
 ///
 /// * `compiler` - Optional path to a C++ compiler. If `None`, uses platform-specific defaults.
+/// * `compiler_args` - Extra arguments forwarded verbatim to the compiler. Only applied when
+///   `compiler` is explicitly specified and is non-MSVC-like; otherwise a warning is emitted.
 ///
 /// # Returns
 ///
@@ -108,15 +115,26 @@ fn write_output(dirs: &[String], output: Option<String>) -> io::Result<()> {
 /// - **Compiler specified (non-MSVC-like)**: Invokes the compiler with `-v` to extract include directories
 fn get_include_dirs(
     compiler: Option<PathBuf>,
+    compiler_args: Vec<String>,
     #[cfg(windows)] vs_version: Option<String>,
 ) -> Result<Vec<String>, String> {
+    // Warn if extra args provided but cannot be applied
+    if !compiler_args.is_empty() && compiler.is_none() {
+        eprintln!("warning: compiler args ignored — no --compiler specified");
+    }
+    #[cfg(windows)]
+    if !compiler_args.is_empty() && compiler.as_ref().map_or(false, is_msvc_like_compiler) {
+        eprintln!("warning: compiler args ignored for MSVC-like compilers");
+    }
+
     #[cfg(windows)]
     if compiler.as_ref().map_or(true, is_msvc_like_compiler) {
         // On Windows with no compiler, or with an MSVC-like compiler, use $INCLUDE or auto-detect VS
         return windows_vs::get_windows_include_dirs_with_fallback(vs_version.as_deref());
     }
 
-    // Unix-like platforms or when compiler is specified
+    // Only forward extra args when compiler was explicitly specified
+    let compiler_is_explicit = compiler.is_some();
     let compiler_path = compiler.unwrap_or_else(|| {
         if cfg!(unix) {
             PathBuf::from("/usr/bin/c++")
@@ -124,8 +142,9 @@ fn get_include_dirs(
             PathBuf::from("c++")
         }
     });
+    let effective_args: &[String] = if compiler_is_explicit { &compiler_args } else { &[] };
 
-    get_compiler_include_dirs(&compiler_path)
+    get_compiler_include_dirs(&compiler_path, effective_args)
 }
 
 /// Returns `true` if the compiler filename matches a known MSVC-like compiler.
@@ -149,18 +168,19 @@ fn is_msvc_like_compiler(compiler: &PathBuf) -> bool {
 
 /// Extracts include directories by invoking a gcc-like compiler with verbose flags.
 ///
-/// Runs the compiler with `-v -E -x c++ -` arguments to generate verbose output
+/// Runs the compiler with `-v -E -x c++ [extra_args] -` arguments to generate verbose output
 /// about its configuration, then parses the stderr output to extract include directories.
 ///
 /// # Arguments
 ///
 /// * `compiler` - Path to the C++ compiler executable
+/// * `extra_args` - Additional arguments inserted after `-x c++` and before the stdin sentinel `-`
 ///
 /// # Returns
 ///
 /// * `Ok(Vec<String>)` - A vector of include directory paths
 /// * `Err(String)` - An error if the compiler fails to execute or no directories are found
-fn get_compiler_include_dirs(compiler: &PathBuf) -> Result<Vec<String>, String> {
+fn get_compiler_include_dirs(compiler: &PathBuf, extra_args: &[String]) -> Result<Vec<String>, String> {
     // Run compiler with -v flag to get verbose output
     // We need to provide some input, so we use echo with a simple C++ snippet
     let output = Command::new(compiler)
@@ -168,6 +188,7 @@ fn get_compiler_include_dirs(compiler: &PathBuf) -> Result<Vec<String>, String> 
         .arg("-E")
         .arg("-x")
         .arg("c++")
+        .args(extra_args)
         .arg("-")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
