@@ -124,6 +124,11 @@ fn find_vswhere() -> Result<PathBuf, String> {
 
 /// Queries vswhere for Visual Studio installation path.
 ///
+/// Uses a two-attempt strategy: first queries without a product filter (finds VS IDE
+/// installations), then falls back to targeting `Microsoft.VisualStudio.Product.BuildTools`
+/// if no IDE installation is found. This gives VS IDE priority while supporting
+/// BuildTools-only environments (common in CI).
+///
 /// # Arguments
 /// * `vswhere_path` - Path to vswhere.exe
 /// * `vs_version` - Optional VS version filter
@@ -132,14 +137,61 @@ fn find_vswhere() -> Result<PathBuf, String> {
 /// * `Ok(String)` - VS installation path
 /// * `Err(String)` - Error if VS not found or vswhere fails
 fn query_vswhere(vswhere_path: &PathBuf, vs_version: Option<&str>) -> Result<String, String> {
+    // Pre-compute version range once; propagate mapping errors immediately.
+    let version_range = vs_version.map(map_version_to_range).transpose()?;
+
+    // Attempt 1: standard query — finds VS IDE (Enterprise, Professional, Community).
+    let instances = run_vswhere_query(vswhere_path, None, version_range.as_deref())?;
+    if let Some(inst) = instances.first() {
+        return Ok(inst.installation_path.clone());
+    }
+
+    // Attempt 2: BuildTools fallback — only reached when no IDE installation found.
+    let instances = run_vswhere_query(
+        vswhere_path,
+        Some("Microsoft.VisualStudio.Product.BuildTools"),
+        version_range.as_deref(),
+    )?;
+    instances
+        .first()
+        .map(|inst| inst.installation_path.clone())
+        .ok_or_else(|| {
+            if let Some(ver) = vs_version {
+                format!("No Visual Studio or Build Tools installation found for version: {}", ver)
+            } else {
+                "No Visual Studio or Build Tools installation found".to_string()
+            }
+        })
+}
+
+/// Executes a single vswhere query and returns the parsed list of VS instances.
+///
+/// # Arguments
+/// * `vswhere_path` - Path to vswhere.exe
+/// * `products` - Optional `-products` filter (e.g., `"Microsoft.VisualStudio.Product.BuildTools"`).
+///   When `None`, vswhere uses its default product scope (VS IDE editions).
+/// * `version_range` - Optional pre-computed vswhere version range (e.g., `"[17.0,18.0)"`).
+///   When `None`, `-latest` is used.
+///
+/// # Returns
+/// * `Ok(Vec<VsInstance>)` - Parsed installations (may be empty)
+/// * `Err(String)` - Error if vswhere execution or JSON parsing fails
+fn run_vswhere_query(
+    vswhere_path: &PathBuf,
+    products: Option<&str>,
+    version_range: Option<&str>,
+) -> Result<Vec<VsInstance>, String> {
     let mut cmd = Command::new(vswhere_path);
+
+    if let Some(products) = products {
+        cmd.arg("-products").arg(products);
+    }
+
     cmd.arg("-format").arg("json");
     cmd.arg("-utf8");
 
-    // Apply version filter if specified
-    if let Some(ver) = vs_version {
-        let version_range = map_version_to_range(ver)?;
-        cmd.arg("-version").arg(version_range);
+    if let Some(range) = version_range {
+        cmd.arg("-version").arg(range);
     } else {
         cmd.arg("-latest");
     }
@@ -153,19 +205,7 @@ fn query_vswhere(vswhere_path: &PathBuf, vs_version: Option<&str>) -> Result<Str
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let instances: Vec<VsInstance> =
-        serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse vswhere JSON output: {}", e))?;
-
-    instances
-        .first()
-        .map(|inst| inst.installation_path.clone())
-        .ok_or_else(|| {
-            if let Some(ver) = vs_version {
-                format!("No Visual Studio installation found for version: {}", ver)
-            } else {
-                "No Visual Studio installation found".to_string()
-            }
-        })
+    serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse vswhere JSON output: {}", e))
 }
 
 /// Maps friendly version strings to vswhere version ranges.

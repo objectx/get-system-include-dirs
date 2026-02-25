@@ -23,13 +23,23 @@ The system MUST check the `INCLUDE` environment variable first before attempting
 #### FR-2: VS Detection via vswhere
 **Priority**: MUST
 
-The system MUST use `vswhere.exe` to locate Visual Studio installations.
+The system MUST use `vswhere.exe` to locate Visual Studio or Build Tools installations, using a two-attempt strategy to give VS IDE priority while supporting BuildTools-only environments.
 
 **Acceptance Criteria**:
 - Check for vswhere at: `C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe`
 - If not found, return error (no fallback)
-- Execute vswhere with `-format json -utf8` flags
-- Parse JSON output to extract `installationPath`
+- **Attempt 1**: Execute vswhere with `-format json -utf8` (no `-products` flag) to find VS IDE installations
+- If attempt 1 returns results, use the first result and stop
+- **Attempt 2** (only if attempt 1 returned empty results): Execute vswhere with `-products Microsoft.VisualStudio.Product.BuildTools -format json -utf8` to find BuildTools installations
+- If attempt 2 returns results, use the first result
+- If both attempts return empty results, return error indicating neither VS IDE nor Build Tools was found
+- If vswhere execution itself fails (non-empty-result failure), propagate the error immediately without retrying
+
+**Scenarios**:
+- VS IDE installed → attempt 1 returns the IDE installation; attempt 2 is never executed
+- BuildTools only installed → attempt 1 returns empty; attempt 2 returns the BuildTools installation
+- Both VS IDE and BuildTools installed → attempt 1 returns VS IDE (VS IDE takes priority); attempt 2 is never executed
+- Neither installed → both attempts return empty; error is returned
 
 #### FR-3: Version Filtering
 **Priority**: MUST
@@ -80,6 +90,7 @@ The system MUST provide detailed error messages showing what was attempted.
 - Show which step failed: vswhere location, vswhere execution, vsdevcmd execution
 - Include relevant paths and error details
 - Format: Multi-line with context
+- When both vswhere attempts return empty results, the error MUST indicate that both VS IDE and Build Tools were checked
 
 **Error Message Examples**:
 
@@ -90,10 +101,16 @@ Tried to find Visual Studio: vswhere.exe not found at standard location.
 Expected: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe
 ```
 
-No VS found for version:
+No VS IDE or BuildTools found (no version filter):
 ```
 Error: INCLUDE environment variable not set.
-Tried to find Visual Studio: No Visual Studio installation found for version: 2022
+Tried to find Visual Studio: No Visual Studio or Build Tools installation found
+```
+
+No VS IDE or BuildTools found (with version filter):
+```
+Error: INCLUDE environment variable not set.
+Tried to find Visual Studio: No Visual Studio or Build Tools installation found for version: 2022
 ```
 
 vsdevcmd failed:
@@ -268,4 +285,3 @@ Then: Return error with message showing expected vswhere path
 - Workload/component filtering (e.g., require C++ tools)
 - Caching of detected VS paths
 - Registry-based detection for VS 2015 and older
-- Support for VS BuildTools-only installations
