@@ -12,5 +12,5 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Push a test tag (e.g., `v0.0.0-test`) to a fork or test branch and verify the workflow triggers, both matrix jobs succeed, and assets appear on the GitHub Release
-- [ ] 3.2 Delete the test tag and release after verification
+- [x] 3.1 Push a test tag (e.g., `v0.0.0-test`) to a fork or test branch and verify the workflow triggers, both matrix jobs succeed, and assets appear on the GitHub Release
+- [x] 3.2 Delete the test tag and release after verification
