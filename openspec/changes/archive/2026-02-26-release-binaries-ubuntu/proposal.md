@@ -4,7 +4,10 @@ The existing release workflow only builds macOS binaries. Linux users currently 
 
 ## What Changes
 
-- Add a `build-ubuntu` job to `.github/workflows/release.yml` that builds `x86_64-unknown-linux-gnu` on `ubuntu-latest` and uploads the binary as a release asset
+- Add a `create-release` job to `.github/workflows/release.yml` that creates the GitHub Release first (via `gh release create`), eliminating the race condition where multiple build jobs simultaneously finalized the same release
+- Add a `build-ubuntu` job that builds `x86_64-unknown-linux-gnu` on `ubuntu-24.04`, waits for `create-release`, and uploads the binary via `gh release upload`
+- Update `build-macos` to also wait for `create-release` and upload via `gh release upload`
+- Remove `softprops/action-gh-release` from all jobs
 
 ## Non-goals
 
@@ -25,5 +28,6 @@ The existing release workflow only builds macOS binaries. Linux users currently 
 
 ## Impact
 
-- Modified file: `.github/workflows/release.yml` (new `build-ubuntu` job added alongside `build-macos`)
+- Modified file: `.github/workflows/release.yml` (new `create-release` job; `build-ubuntu` job added; `build-macos` updated to depend on `create-release`)
+- `softprops/action-gh-release` removed from all jobs; replaced with `gh` CLI (pre-installed on all GitHub-hosted runners)
 - No source code, Justfile, or other workflow changes

@@ -5,8 +5,10 @@ The release workflow (`release.yml`) already has a `build-macos` job covering `x
 ## Goals / Non-Goals
 
 **Goals:**
-- Add a `build-ubuntu` job to the existing `release.yml` that builds `x86_64-unknown-linux-gnu` and uploads the binary to the GitHub Release
-- Reuse the same `softprops/action-gh-release` action (same pinned SHA) and `GITHUB_TOKEN` pattern established by the macOS job
+- Add a `create-release` job that creates the GitHub Release before any build job runs, eliminating the race condition where multiple jobs simultaneously finalized the same release
+- Add a `build-ubuntu` job to the existing `release.yml` that builds `x86_64-unknown-linux-gnu` and uploads the binary to the GitHub Release via `gh release upload`
+- Update `build-macos` to depend on `create-release` and upload via `gh release upload`
+- Remove `softprops/action-gh-release` from all jobs
 
 **Non-Goals:**
 - ARM Linux, musl, or any other Linux variants
@@ -31,11 +33,13 @@ The release workflow (`release.yml`) already has a `build-macos` job covering `x
 
 **Alternative considered**: Single matrix job with `runs-on: ${{ matrix.os }}` — rejected for readability and because it conflates two distinct platform strategies.
 
-### Reuse the same pinned `softprops/action-gh-release` SHA
+### Use `gh release upload` instead of `softprops/action-gh-release`
 
-**Decision**: Use the same `softprops/action-gh-release@a06a81a` (v2.5.0) as the macOS job.
+**Decision**: Replace `softprops/action-gh-release` in all jobs with `gh release upload` (the pre-installed `gh` CLI).
 
-**Rationale**: Consistency and avoiding drift between jobs. Both jobs upload to the same GitHub Release; using the same action version ensures identical behavior.
+**Rationale**: `softprops/action-gh-release` both uploads assets and patches the release metadata (marking it as latest). When multiple jobs run concurrently, they race to finalize the same release, causing sporadic failures. `gh release upload` only PUTs the asset file — no metadata patch, no race. The `gh` CLI is pre-installed on all GitHub-hosted runners, so no third-party action pin is needed.
+
+**Alternative considered**: Keep `softprops/action-gh-release` and add retry logic — rejected as treating a symptom rather than the root cause.
 
 ## Risks / Trade-offs
 
