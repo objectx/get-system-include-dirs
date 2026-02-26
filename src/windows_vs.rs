@@ -157,7 +157,10 @@ fn query_vswhere(vswhere_path: &PathBuf, vs_version: Option<&str>) -> Result<Str
         .map(|inst| inst.installation_path.clone())
         .ok_or_else(|| {
             if let Some(ver) = vs_version {
-                format!("No Visual Studio or Build Tools installation found for version: {}", ver)
+                format!(
+                    "No Visual Studio or Build Tools installation found for version: {}",
+                    ver
+                )
             } else {
                 "No Visual Studio or Build Tools installation found".to_string()
             }
@@ -227,7 +230,7 @@ fn map_version_to_range(version: &str) -> Result<String, String> {
             return Err(format!(
                 "Unknown VS version: {}. Use: 2017, 2019, 2022, 2026 or range like [17.0,18.0)",
                 version
-            ))
+            ));
         }
     };
     Ok(range)

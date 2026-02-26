@@ -14,7 +14,7 @@ use clap::Parser;
 use regex::Regex;
 use std::fs::File;
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 #[cfg(windows)]
