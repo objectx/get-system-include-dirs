@@ -72,3 +72,41 @@ jobs:
         run: gh release upload ${{ github.ref_name }} get-system-include-dirs-x86_64-unknown-linux-gnu --repo ${{ github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    name: Build (x86_64-pc-windows-msvc)
+    runs-on: windows-2025
+    needs: [create-release]
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Rust target
+        run: rustup target add x86_64-pc-windows-msvc
+
+      - name: Build
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          $output = & .\target\x86_64-pc-windows-msvc\release\get-system-include-dirs.exe
+          if ($LASTEXITCODE -ne 0) { throw "Binary exited with code $LASTEXITCODE" }
+          if (-not $output) { throw "No output produced" }
+          Write-Host "Found include dirs:"
+          $output | ForEach-Object { Write-Host "  $_" }
+
+      - name: Rename binary
+        run: |
+          cp target/x86_64-pc-windows-msvc/release/get-system-include-dirs.exe \
+             get-system-include-dirs-x86_64-pc-windows-msvc.exe
+
+      - name: Upload to GitHub Release
+        run: gh release upload ${{ github.ref_name }} get-system-include-dirs-x86_64-pc-windows-msvc.exe --repo ${{ github.repository }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
