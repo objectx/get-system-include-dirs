@@ -18,6 +18,9 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 #[cfg(windows)]
+use std::path::Path;
+
+#[cfg(windows)]
 mod windows_vs;
 
 #[derive(Parser, Debug)]
