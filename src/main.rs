@@ -14,11 +14,8 @@ use clap::Parser;
 use regex::Regex;
 use std::fs::File;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-
-#[cfg(windows)]
-use std::path::Path;
 
 #[cfg(windows)]
 mod windows_vs;
@@ -183,7 +180,7 @@ fn is_msvc_like_compiler(compiler: &Path) -> bool {
 ///
 /// * `Ok(Vec<String>)` - A vector of include directory paths
 /// * `Err(String)` - An error if the compiler fails to execute or no directories are found
-fn get_compiler_include_dirs(compiler: &PathBuf, extra_args: &[String]) -> Result<Vec<String>, String> {
+fn get_compiler_include_dirs(compiler: &Path, extra_args: &[String]) -> Result<Vec<String>, String> {
     // Run compiler with -v flag to get verbose output
     // We need to provide some input, so we use echo with a simple C++ snippet
     let output = Command::new(compiler)
