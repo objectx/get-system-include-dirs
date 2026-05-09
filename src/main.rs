@@ -20,6 +20,8 @@ use std::process::{Command, Stdio};
 #[cfg(windows)]
 mod windows_vs;
 
+mod timing;
+
 #[derive(Parser, Debug)]
 #[command(name = "get-system-include-dirs")]
 #[command(about = "Extract system include directories from C++ compiler", long_about = None)]
