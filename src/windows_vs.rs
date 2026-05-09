@@ -45,8 +45,10 @@ pub fn get_windows_include_dirs_with_fallback(
     let discover_ms_env = discover_timer.stop();
 
     if let Ok(include_var) = include_from_env {
-        let mut t = Timings::default();
-        t.discover_ms = Some(discover_ms_env);
+        let mut t = Timings {
+            discover_ms: Some(discover_ms_env),
+            ..Default::default()
+        };
 
         let parse_timer = PhaseTimer::start();
         let parse_result = parse_include_env(&include_var);
