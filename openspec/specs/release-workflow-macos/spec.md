@@ -1,3 +1,11 @@
+# Spec: Release Workflow (macOS)
+
+## Purpose
+
+Defines the GitHub Actions release workflow that builds macOS binaries for `x86_64-apple-darwin` and `aarch64-apple-darwin` on tag pushes matching `v*`, then uploads each binary as a named release asset using only `GITHUB_TOKEN`.
+
+## Requirements
+
 ### Requirement: Workflow triggers on version tags
 The release workflow SHALL trigger on pushes to tags matching the pattern `v*` (e.g., `v1.0.0`, `v0.2.1`). It SHALL NOT trigger on branch pushes or pull requests.
 

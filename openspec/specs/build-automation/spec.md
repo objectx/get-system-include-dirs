@@ -2,7 +2,7 @@
 
 **Status**: Active
 
-## Overview
+## Purpose
 
 Justfile-based build automation for cross-platform release builds, artifact collection, and standard development workflows using NuShell as the script interpreter.
 

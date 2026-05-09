@@ -1,3 +1,11 @@
+# Spec: Compiler Extra Args
+
+## Purpose
+
+Defines the `--` separator on the CLI for forwarding arbitrary arguments verbatim to a gcc-like compiler invocation. Specifies their position in the command line, and the conditions under which extra args are warned about and ignored (no `--compiler` flag, or an MSVC-like compiler).
+
+## Requirements
+
 ### Requirement: Compiler extra args passthrough
 The tool SHALL accept arbitrary arguments after a `--` separator on the CLI and forward them verbatim to the gcc-like compiler invocation.
 

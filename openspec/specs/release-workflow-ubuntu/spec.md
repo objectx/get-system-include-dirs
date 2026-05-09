@@ -1,3 +1,9 @@
+# Spec: Release Workflow (Ubuntu)
+
+## Purpose
+
+Extends the release workflow with a `build-ubuntu` job that builds the `x86_64-unknown-linux-gnu` binary on `ubuntu-latest` and uploads it as a release asset alongside the macOS artifacts. Also defines the shared `create-release` job that runs first so all build jobs upload to the same Release.
+
 ## ADDED Requirements
 
 ### Requirement: Build Ubuntu binary for x86_64

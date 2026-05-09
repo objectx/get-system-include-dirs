@@ -1,7 +1,9 @@
-# timing-output Specification
+# Spec: Timing Output
 
 ## Purpose
-TBD - created by archiving change add-timing-output. Update Purpose after archive.
+
+Defines the opt-in `--timing` flag that emits a single JSON line on stderr breaking down wall-clock time per execution phase (`discover_ms`, `parse_ms`, `write_ms`, `elapsed_ms`). Covers a uniform schema across the gcc-like, Windows `$INCLUDE`, and Windows VS auto-detect paths, plus partial timing emission on failure.
+
 ## Requirements
 ### Requirement: Opt-in `--timing` flag
 

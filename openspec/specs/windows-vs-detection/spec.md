@@ -1,8 +1,6 @@
 # Spec: Windows Visual Studio Detection
 
-**Status**: Delta (new capability)
-
-## Overview
+## Purpose
 
 Automatic Visual Studio detection and INCLUDE extraction for Windows when no compiler is specified and the INCLUDE environment variable is not set.
 
