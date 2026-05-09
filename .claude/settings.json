@@ -1,6 +1,30 @@
 {
   "sandbox": {
     "enabled": true,
-    "failIfUnavailable": true
+    "failIfUnavailable": true,
+    "allowWrite": [".worktrees/"],
+    "network": {
+      "allowedDomains": [
+        "crates.io",
+        "*.crates.io",
+        "static.crates.io",
+        "index.crates.io",
+        "github.com",
+        "*.github.com",
+        "raw.githubusercontent.com",
+        "objects.githubusercontent.com",
+        "codeload.github.com"
+      ]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(openspec *)",
+      "Bash(cargo *)",
+      "Bash(gh api *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status *)"
+    ]
   }
 }
