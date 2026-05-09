@@ -54,7 +54,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let outer = Instant::now();
+    let total_start = Instant::now();
 
     match get_include_dirs(
         args.compiler,
@@ -69,14 +69,14 @@ fn main() {
 
             match write_result {
                 Ok(()) => {
-                    t.elapsed_ms = outer.elapsed().as_millis();
+                    t.elapsed_ms = total_start.elapsed().as_millis();
                     if args.timing {
                         eprintln!("{}", serde_json::to_string(&TimingEnvelope { timing: t }).unwrap());
                     }
                 }
                 Err(e) => {
                     let msg = format!("Error writing output: {}", e);
-                    t.elapsed_ms = outer.elapsed().as_millis();
+                    t.elapsed_ms = total_start.elapsed().as_millis();
                     t.error = Some(msg.clone());
                     if args.timing {
                         eprintln!("{}", serde_json::to_string(&TimingEnvelope { timing: t }).unwrap());
@@ -87,7 +87,7 @@ fn main() {
             }
         }
         Err((mut t, msg)) => {
-            t.elapsed_ms = outer.elapsed().as_millis();
+            t.elapsed_ms = total_start.elapsed().as_millis();
             t.error = Some(msg.clone());
             if args.timing {
                 eprintln!("{}", serde_json::to_string(&TimingEnvelope { timing: t }).unwrap());
