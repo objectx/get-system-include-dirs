@@ -29,7 +29,7 @@ jobs:
           - aarch64-apple-darwin
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
@@ -55,7 +55,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Add Rust target
         run: rustup target add x86_64-unknown-linux-gnu
@@ -84,7 +84,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Add Rust target
         run: rustup target add x86_64-pc-windows-msvc
