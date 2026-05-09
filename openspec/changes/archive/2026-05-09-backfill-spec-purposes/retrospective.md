@@ -105,13 +105,15 @@ Commit chain (chronological):
 
 ## 6. Promote candidates → long-term learning
 
-- [ ] 🟡 **Validate the empty change scaffold immediately after `openspec new change`, before drafting any artifacts.** → **Promote to** project CLAUDE.md (OpenSpec workflow section)
+- [x] 🟡 **Validate the empty change scaffold immediately after `openspec new change`, before drafting any artifacts.** → **Promote to** project CLAUDE.md (OpenSpec workflow section)
   > **Why**: This cycle discovered the validator's "must have at least one delta" hard-rule only after writing brainstorm + proposal + empty specs/. A 5-second `openspec validate <name> --type change` against the empty scaffold would have surfaced the constraint before any drafting, avoiding a mid-flight design pass.
   > **How to apply**: Add to `CLAUDE.md` under "OpenSpec Workflow": "After `openspec new change <name>`, immediately run `openspec validate <name> --type change` to surface schema-required constraints (deltas, applyRequires) before drafting artifacts."
+  > **Promoted 2026-05-10**: see `CLAUDE.md` "OpenSpec Workflow → Validate the empty change scaffold first".
 
-- [ ] 🟡 **For documentation-only changes that don't fit the OpenSpec delta model, introduce a meta-conventions capability rather than fabricating stub deltas.** → **Promote to** project CLAUDE.md (OpenSpec workflow section)
+- [x] 🟡 **For documentation-only changes that don't fit the OpenSpec delta model, introduce a meta-conventions capability rather than fabricating stub deltas.** → **Promote to** project CLAUDE.md (OpenSpec workflow section)
   > **Why**: When `openspec validate` rejects a docs change for lacking deltas, the lazy fix is a no-op stub MODIFIED. The honest fix is to ask "what conventions am I converging on?" and introduce a new capability whose requirements the docs change is implementing. The latter is a strictly better artifact: testable, durable, prevents future drift.
   > **How to apply**: When a planned change touches only `openspec/specs/**/*.md` and has no requirement deltas, treat that as a signal to scope a meta-conventions capability instead. Recognize the smell: "I'm fighting the validator to skip deltas" → re-frame as "I'm encoding a convention as deltas."
+  > **Promoted 2026-05-10**: see `CLAUDE.md` "OpenSpec Workflow → Documentation-only changes need a meta-conventions capability".
 
 - [ ] 🟡 **superpowers-bridge schema's apply phase needs a documentation-only branch.** → **Promote to** schema (upstream PR motivator at JiangWay/openspec-schemas)
   > **Why**: Five of the seven required apply-phase skills (writing-plans, using-git-worktrees, subagent-driven-development, transitive TDD, transitive code-review) were skipped this cycle because they don't apply to markdown edits. Per cycle the same negotiation will happen for any docs-only change. The current "manual fallback" is referenced but not described in the schema's apply instruction.

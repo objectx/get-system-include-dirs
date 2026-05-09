@@ -49,6 +49,18 @@ The tool has two source files:
 
 Design specs live in `openspec/specs/<change-name>/spec.md`. Active changes are worked from that directory; completed changes are archived under `openspec/changes/archive/`. The `openspec/config.yaml` records project context and per-artifact rules used when proposing or applying changes via the `opsx:*` skills.
 
+### Validate the empty change scaffold first
+
+After running `openspec new change <name>`, run `openspec validate <name> --type change` against the empty scaffold **before drafting any artifacts**. This surfaces schema-required constraints (e.g. "Change must have at least one delta", `applyRequires` chains) at zero cost. Discovering those constraints mid-flight (after brainstorm/proposal/specs are written) forces a re-design pass — see the `2026-05-09-backfill-spec-purposes` retrospective §2 for the cycle that motivated this rule.
+
+### Documentation-only changes need a meta-conventions capability
+
+When a planned change touches only `openspec/specs/**/*.md` (or other docs paths) and has no requirement deltas, `openspec validate` will reject it with `Change must have at least one delta`. The lazy fix — fabricating a no-op `MODIFIED Requirements` stub — lies about what is changing and adds no future value.
+
+The honest fix is to ask "what convention am I converging the docs onto?" and introduce a new capability whose **requirements encode that convention**. The docs edits then become the implementation work that brings existing files into compliance with the new requirements. This is strictly better: the convention is testable (`openspec validate --strict`), durable (future drift is caught), and the change is no longer fighting the validator. See `openspec/specs/spec-format-conventions/spec.md` for the worked example.
+
+Smell to recognize: "I'm trying to skip deltas because nothing 'really' changes" → reframe as "I'm encoding a convention as deltas."
+
 ## Workflow routing (read on session start)
 
 This repo uses [`superpowers-bridge`](https://github.com/JiangWay/openspec-schemas/tree/main/superpowers-bridge) to bridge OpenSpec and Superpowers. Integration rules (language, artifact paths, PRECHECK) follow that bridge's README; this section is the routing guidance for Claude.
