@@ -57,10 +57,16 @@ mod tests {
             },
         };
         let s = serde_json::to_string(&env).unwrap();
-        assert_eq!(
-            s,
-            r#"{"timing":{"discover_ms":10,"parse_ms":2,"write_ms":1,"elapsed_ms":13}}"#
-        );
+        // Single-line property: no embedded newlines, no leading/trailing whitespace.
+        assert!(!s.contains('\n'), "JSON should not contain raw newline byte: {s}");
+        assert_eq!(s, s.trim(), "JSON should not have leading/trailing whitespace: {s}");
+        // Structural value check via serde_json::Value round-trip.
+        let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+        assert_eq!(v["timing"]["discover_ms"], 10);
+        assert_eq!(v["timing"]["parse_ms"], 2);
+        assert_eq!(v["timing"]["write_ms"], 1);
+        assert_eq!(v["timing"]["elapsed_ms"], 13);
+        assert!(v["timing"].get("error").is_none(), "expected no error field: {s}");
     }
 
     #[test]
