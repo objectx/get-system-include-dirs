@@ -34,6 +34,10 @@ struct Args {
     #[arg(short, long)]
     output: Option<String>,
 
+    /// Emit a single JSON timing line on stderr after the run
+    #[arg(long)]
+    timing: bool,
+
     /// Visual Studio version (e.g., "2022", "2026", "17", "18")
     /// Only used on Windows when no compiler is specified
     #[cfg(windows)]
