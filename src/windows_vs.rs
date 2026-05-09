@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: WTFPL
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Windows Visual Studio detection and INCLUDE environment variable extraction.
 //!
 //! This module provides automatic Visual Studio detection on Windows when the INCLUDE

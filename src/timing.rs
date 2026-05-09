@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: WTFPL
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Timing instrumentation primitives for the `--timing` opt-in stderr output.
 
 use serde::Serialize;
