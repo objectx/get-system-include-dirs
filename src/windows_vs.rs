@@ -5,6 +5,7 @@
 //! environment variable is not set. It uses Microsoft's vswhere.exe tool to locate
 //! VS installations and runs vsdevcmd.bat to extract include directories.
 
+use crate::timing::{PhaseTimer, Timings};
 use serde::Deserialize;
 use std::env;
 use std::os::windows::process::CommandExt;
@@ -32,12 +33,29 @@ struct VsInstance {
 /// * `vs_version` - Optional VS version filter ("2022", "2026", "17", "18")
 ///
 /// # Returns
-/// * `Ok(Vec<String>)` - Include directory paths (forward slashes)
-/// * `Err(String)` - Detailed error message
-pub fn get_windows_include_dirs_with_fallback(vs_version: Option<&str>) -> Result<Vec<String>, String> {
+/// * `Ok((Vec<String>, Timings))` - Include directory paths and per-phase timings
+/// * `Err((Timings, String))` - Partial timings and detailed error message
+#[allow(clippy::result_large_err)] // Timings carries optional error message; size is bounded and intentional.
+pub fn get_windows_include_dirs_with_fallback(
+    vs_version: Option<&str>,
+) -> Result<(Vec<String>, Timings), (Timings, String)> {
     // Priority 1: Check if $INCLUDE already set
-    if let Ok(include_var) = env::var("INCLUDE") {
-        return parse_include_env(&include_var);
+    let discover_timer = PhaseTimer::start();
+    let include_from_env = env::var("INCLUDE");
+    let discover_ms_env = discover_timer.stop();
+
+    if let Ok(include_var) = include_from_env {
+        let mut t = Timings::default();
+        t.discover_ms = Some(discover_ms_env);
+
+        let parse_timer = PhaseTimer::start();
+        let parse_result = parse_include_env(&include_var);
+        t.parse_ms = Some(parse_timer.stop());
+
+        return match parse_result {
+            Ok(dirs) => Ok((dirs, t)),
+            Err(e) => Err((t, e)),
+        };
     }
 
     // Priority 2: Find VS and get INCLUDE via vsdevcmd.bat
@@ -72,36 +90,72 @@ fn parse_include_env(include_var: &str) -> Result<Vec<String>, String> {
 /// * `vs_version` - Optional VS version filter
 ///
 /// # Returns
-/// * `Ok(Vec<String>)` - Include directory paths
-/// * `Err(String)` - Detailed error message showing what was attempted
-fn find_vs_and_get_include(vs_version: Option<&str>) -> Result<Vec<String>, String> {
+/// * `Ok((Vec<String>, Timings))` - Include directory paths and per-phase timings
+/// * `Err((Timings, String))` - Partial timings and detailed error message showing what was attempted
+#[allow(clippy::result_large_err)] // Timings carries optional error message; size is bounded and intentional.
+fn find_vs_and_get_include(vs_version: Option<&str>) -> Result<(Vec<String>, Timings), (Timings, String)> {
+    let mut t = Timings::default();
+
+    // Discover phase: find vswhere, query it, run vsdevcmd to capture INCLUDE.
+    let discover_timer = PhaseTimer::start();
+
     // Step 1: Find vswhere.exe
-    let vswhere_path = find_vswhere().map_err(|e| {
-        format!(
-            "INCLUDE environment variable not set.\nTried to find Visual Studio: {}",
-            e
-        )
-    })?;
+    let vswhere_path = match find_vswhere() {
+        Ok(p) => p,
+        Err(e) => {
+            t.discover_ms = Some(discover_timer.stop());
+            return Err((
+                t,
+                format!(
+                    "INCLUDE environment variable not set.\nTried to find Visual Studio: {}",
+                    e
+                ),
+            ));
+        }
+    };
 
     // Step 2: Query for VS installation
-    let vs_path = query_vswhere(&vswhere_path, vs_version).map_err(|e| {
-        format!(
-            "INCLUDE environment variable not set.\nTried to find Visual Studio: {}",
-            e
-        )
-    })?;
+    let vs_path = match query_vswhere(&vswhere_path, vs_version) {
+        Ok(p) => p,
+        Err(e) => {
+            t.discover_ms = Some(discover_timer.stop());
+            return Err((
+                t,
+                format!(
+                    "INCLUDE environment variable not set.\nTried to find Visual Studio: {}",
+                    e
+                ),
+            ));
+        }
+    };
 
     // Step 3: Run vsdevcmd.bat -arch=x64 and capture INCLUDE
     let vsdevcmd_path = format!("{}\\Common7\\Tools\\vsdevcmd.bat", vs_path);
-    let include_value = run_vsdevcmd_and_capture_include(&vsdevcmd_path).map_err(|e| {
-        format!(
-            "INCLUDE environment variable not set.\nFound VS at: {}\nvsdevcmd.bat execution failed: {}",
-            vs_path, e
-        )
-    })?;
+    let include_value = match run_vsdevcmd_and_capture_include(&vsdevcmd_path) {
+        Ok(v) => v,
+        Err(e) => {
+            t.discover_ms = Some(discover_timer.stop());
+            return Err((
+                t,
+                format!(
+                    "INCLUDE environment variable not set.\nFound VS at: {}\nvsdevcmd.bat execution failed: {}",
+                    vs_path, e
+                ),
+            ));
+        }
+    };
+
+    t.discover_ms = Some(discover_timer.stop());
 
     // Step 4: Parse INCLUDE value
-    parse_include_env(&include_value)
+    let parse_timer = PhaseTimer::start();
+    let parse_result = parse_include_env(&include_value);
+    t.parse_ms = Some(parse_timer.stop());
+
+    match parse_result {
+        Ok(dirs) => Ok((dirs, t)),
+        Err(e) => Err((t, e)),
+    }
 }
 
 /// Locates vswhere.exe at the standard installation path.
