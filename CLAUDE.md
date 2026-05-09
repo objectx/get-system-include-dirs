@@ -61,6 +61,12 @@ The honest fix is to ask "what convention am I converging the docs onto?" and in
 
 Smell to recognize: "I'm trying to skip deltas because nothing 'really' changes" → reframe as "I'm encoding a convention as deltas."
 
+### Docs-only apply override is implicit
+
+When a change's only modified files match `openspec/specs/**/*.md` (or other docs paths), the apply phase **defaults to direct in-session edits** — no worktree dispatch, no per-task subagent, no TDD/code-review ceremony. Plan.md may omit the override paragraph; reviewers infer it from the file scope.
+
+This is the schema's `apply.requires` boilerplate (worktree + subagent-driven-development + TDD + per-task code review) being incorrectly calibrated for code changes. Three docs-only cycles (`backfill-spec-purposes`, `fix-release-workflow-ubuntu-spec`, `reformat-windows-vs-detection-spec`) wrote the same override paragraph identically; promoting the rule here removes the boilerplate. The upstream fix is a docs-only branch in the schema graph (tracked as a §6 candidate in those retros' carry-forward sections).
+
 ## Workflow routing (read on session start)
 
 This repo uses [`superpowers-bridge`](https://github.com/JiangWay/openspec-schemas/tree/main/superpowers-bridge) to bridge OpenSpec and Superpowers. Integration rules (language, artifact paths, PRECHECK) follow that bridge's README; this section is the routing guidance for Claude.
