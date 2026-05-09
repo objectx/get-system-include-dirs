@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: WTFPL
 //! Timing instrumentation primitives for the `--timing` opt-in stderr output.
 
-// Public API is consumed by later instrumentation tasks; suppress until then.
-#![allow(dead_code)]
 use serde::Serialize;
 use std::time::Instant;
 

@@ -16,11 +16,14 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::Instant;
 
 #[cfg(windows)]
 mod windows_vs;
 
 mod timing;
+
+use crate::timing::{PhaseTimer, TimingEnvelope, Timings};
 
 #[derive(Parser, Debug)]
 #[command(name = "get-system-include-dirs")]
@@ -51,6 +54,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
+    let outer = Instant::now();
 
     match get_include_dirs(
         args.compiler,
@@ -58,14 +62,37 @@ fn main() {
         #[cfg(windows)]
         args.vs_version,
     ) {
-        Ok(dirs) => {
-            if let Err(e) = write_output(&dirs, args.output) {
-                eprintln!("Error writing output: {}", e);
-                std::process::exit(1);
+        Ok((dirs, mut t)) => {
+            let write_timer = PhaseTimer::start();
+            let write_result = write_output(&dirs, args.output);
+            t.write_ms = Some(write_timer.stop());
+
+            match write_result {
+                Ok(()) => {
+                    t.elapsed_ms = outer.elapsed().as_millis();
+                    if args.timing {
+                        eprintln!("{}", serde_json::to_string(&TimingEnvelope { timing: t }).unwrap());
+                    }
+                }
+                Err(e) => {
+                    let msg = format!("Error writing output: {}", e);
+                    t.elapsed_ms = outer.elapsed().as_millis();
+                    t.error = Some(msg.clone());
+                    if args.timing {
+                        eprintln!("{}", serde_json::to_string(&TimingEnvelope { timing: t }).unwrap());
+                    }
+                    eprintln!("{}", msg);
+                    std::process::exit(1);
+                }
             }
         }
-        Err(e) => {
-            eprintln!("Error: {}", e);
+        Err((mut t, msg)) => {
+            t.elapsed_ms = outer.elapsed().as_millis();
+            t.error = Some(msg.clone());
+            if args.timing {
+                eprintln!("{}", serde_json::to_string(&TimingEnvelope { timing: t }).unwrap());
+            }
+            eprintln!("Error: {}", msg);
             std::process::exit(1);
         }
     }
@@ -110,8 +137,8 @@ fn write_output(dirs: &[String], output: Option<String>) -> io::Result<()> {
 ///
 /// # Returns
 ///
-/// * `Ok(Vec<String>)` - A vector of include directory paths
-/// * `Err(String)` - An error message if the operation fails
+/// * `Ok((Vec<String>, Timings))` - Include directory paths and per-phase timings
+/// * `Err((Timings, String))` - Partial timings (whatever phases completed) and error message
 ///
 /// # Platform behavior
 ///
@@ -119,11 +146,12 @@ fn write_output(dirs: &[String], output: Option<String>) -> io::Result<()> {
 ///   Visual Studio via `vswhere.exe` and `vsdevcmd.bat`
 /// - **Unix-like (no compiler specified)**: Uses `/usr/bin/c++`
 /// - **Compiler specified (non-MSVC-like)**: Invokes the compiler with `-v` to extract include directories
+#[allow(clippy::result_large_err)] // Timings carries optional error message; size is bounded and intentional.
 fn get_include_dirs(
     compiler: Option<PathBuf>,
     compiler_args: Vec<String>,
     #[cfg(windows)] vs_version: Option<String>,
-) -> Result<Vec<String>, String> {
+) -> Result<(Vec<String>, Timings), (Timings, String)> {
     // Warn if extra args provided but cannot be applied
     if !compiler_args.is_empty() && compiler.is_none() {
         eprintln!("warning: compiler args ignored — no --compiler specified");
@@ -184,11 +212,18 @@ fn is_msvc_like_compiler(compiler: &Path) -> bool {
 ///
 /// # Returns
 ///
-/// * `Ok(Vec<String>)` - A vector of include directory paths
-/// * `Err(String)` - An error if the compiler fails to execute or no directories are found
-fn get_compiler_include_dirs(compiler: &Path, extra_args: &[String]) -> Result<Vec<String>, String> {
+/// * `Ok((Vec<String>, Timings))` - Include directory paths and per-phase timings
+/// * `Err((Timings, String))` - Partial timings and error message
+#[allow(clippy::result_large_err)] // Timings carries optional error message; size is bounded and intentional.
+fn get_compiler_include_dirs(
+    compiler: &Path,
+    extra_args: &[String],
+) -> Result<(Vec<String>, Timings), (Timings, String)> {
+    let mut t = Timings::default();
+
     // Run compiler with -v flag to get verbose output
     // We need to provide some input, so we use echo with a simple C++ snippet
+    let discover_timer = PhaseTimer::start();
     let output = Command::new(compiler)
         .arg("-v")
         .arg("-E")
@@ -200,13 +235,23 @@ fn get_compiler_include_dirs(compiler: &Path, extra_args: &[String]) -> Result<V
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output();
+    t.discover_ms = Some(discover_timer.stop());
 
-    let output = output.map_err(|e| format!("Failed to execute compiler: {}", e))?;
+    let output = match output {
+        Ok(o) => o,
+        Err(e) => return Err((t, format!("Failed to execute compiler: {}", e))),
+    };
 
     // gcc-like compilers write -v output to stderr
+    let parse_timer = PhaseTimer::start();
     let stderr = String::from_utf8_lossy(&output.stderr);
+    let parse_result = parse_include_dirs(&stderr);
+    t.parse_ms = Some(parse_timer.stop());
 
-    parse_include_dirs(&stderr)
+    match parse_result {
+        Ok(dirs) => Ok((dirs, t)),
+        Err(e) => Err((t, e)),
+    }
 }
 
 /// Parses include directories from gcc-like compiler verbose output.
